@@ -10,8 +10,9 @@ import { authAndSetupMachineIfNeeded } from '@/ui/auth';
 import { configuration } from '@/configuration';
 import packageJson from '../../package.json';
 import { getEnvironmentInfo } from '@/ui/doctor';
-import { spawnHappyCLI } from '@/utils/spawnHappyCLI';
-import { writeRunnerState, RunnerLocallyPersistedState, readRunnerState, acquireRunnerLock, releaseRunnerLock } from '@/persistence';
+import { spawnHappyCLI, getHappyCliCommand } from '@/utils/spawnHappyCLI';
+import { spawn, execSync } from 'child_process';
+import { writeRunnerState, RunnerLocallyPersistedState, readRunnerState, acquireRunnerLock, releaseRunnerLock, readSettingsSync } from '@/persistence';
 import { isProcessAlive, isWindows, killProcess, killProcessByChildProcess } from '@/utils/process';
 import { PERMISSION_MODES } from '@hapi/protocol/modes';
 import { withRetry } from '@/utils/time';
@@ -380,6 +381,11 @@ export async function startRunner(options: { workspaceRoots?: string[] } = {}): 
 
         const args = buildCliArgs(agent, options, yolo);
 
+        // Determine if tmux should be used (per-session option > settings.json)
+        const settings = readSettingsSync();
+        const shouldUseTmux = options.useTmux ?? settings.useTmux ?? false;
+        let tmuxSessionName: string | undefined;
+
         // sessionId reserved for future use
         const MAX_TAIL_CHARS = 4000;
         let stderrTail = '';
@@ -399,15 +405,36 @@ export async function startRunner(options: { workspaceRoots?: string[] } = {}): 
           logger.debug('[RUNNER RUN] Child stderr tail', trimmed);
         };
 
-        happyProcess = spawnHappyCLI(args, {
-          cwd: spawnDirectory,
-          detached: true,  // Sessions stay alive when runner stops
-          stdio: ['ignore', 'pipe', 'pipe'],  // Capture stdout/stderr for debugging
-          env: {
-            ...process.env,
-            ...extraEnv
-          }
-        });
+        if (shouldUseTmux) {
+          tmuxSessionName = `hapi-${Date.now().toString(36).slice(-4)}-${Math.random().toString(36).slice(2, 6)}`;
+          const { command: cliCommand, args: cliArgs } = getHappyCliCommand(args);
+          const shellCommand = [cliCommand, ...cliArgs].map(arg => arg.includes(' ') ? `'${arg}'` : arg).join(' ');
+          logger.debug(`[RUNNER RUN] Spawning via tmux session "${tmuxSessionName}": ${shellCommand}`);
+
+          happyProcess = spawn('tmux', [
+            'new-session', '-d',
+            '-s', tmuxSessionName,
+            '-c', spawnDirectory,
+            shellCommand
+          ], {
+            detached: true,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            env: {
+              ...process.env,
+              ...extraEnv
+            }
+          });
+        } else {
+          happyProcess = spawnHappyCLI(args, {
+            cwd: spawnDirectory,
+            detached: true,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            env: {
+              ...process.env,
+              ...extraEnv
+            }
+          });
+        }
 
         happyProcess.stderr?.on('data', (data) => {
           stderrTail = appendTail(stderrTail, data);
@@ -479,7 +506,8 @@ export async function startRunner(options: { workspaceRoots?: string[] } = {}): 
           pid,
           childProcess: happyProcess,
           directoryCreated,
-          message: directoryCreated ? `The path '${directory}' did not exist. We created a new folder and spawned a new session there.` : undefined
+          message: directoryCreated ? `The path '${directory}' did not exist. We created a new folder and spawned a new session there.` : undefined,
+          tmuxSessionName
         };
 
         pidToTrackedSession.set(pid, trackedSession);
@@ -613,7 +641,14 @@ export async function startRunner(options: { workspaceRoots?: string[] } = {}): 
         if (session.happySessionId === sessionId ||
           (sessionId.startsWith('PID-') && pid === parseInt(sessionId.replace('PID-', '')))) {
 
-          if (session.startedBy === 'runner' && session.childProcess) {
+          if (session.tmuxSessionName) {
+            try {
+              execSync(`tmux kill-session -t ${session.tmuxSessionName}`, { stdio: 'ignore' });
+              logger.debug(`[RUNNER RUN] Killed tmux session "${session.tmuxSessionName}" for ${sessionId}`);
+            } catch (error) {
+              logger.debug(`[RUNNER RUN] Failed to kill tmux session "${session.tmuxSessionName}":`, error);
+            }
+          } else if (session.startedBy === 'runner' && session.childProcess) {
             try {
               void killProcessByChildProcess(session.childProcess);
               logger.debug(`[RUNNER RUN] Requested termination for runner-spawned session ${sessionId}`);

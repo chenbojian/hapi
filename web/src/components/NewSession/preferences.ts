@@ -40,3 +40,21 @@ export function savePreferredYoloMode(enabled: boolean): void {
         // Ignore storage errors
     }
 }
+
+const TMUX_STORAGE_KEY = 'hapi:newSession:tmux'
+
+export function loadPreferredTmuxMode(): boolean {
+    try {
+        return localStorage.getItem(TMUX_STORAGE_KEY) === 'true'
+    } catch {
+        return false
+    }
+}
+
+export function savePreferredTmuxMode(enabled: boolean): void {
+    try {
+        localStorage.setItem(TMUX_STORAGE_KEY, enabled ? 'true' : 'false')
+    } catch {
+        // Ignore storage errors
+    }
+}

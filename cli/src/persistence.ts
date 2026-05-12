@@ -22,6 +22,7 @@ interface Settings {
   // Legacy field name (for migration, read-only)
   serverUrl?: string
   enableAutoTitle?: boolean
+  useTmux?: boolean
 }
 
 const defaultSettings: Settings = {}

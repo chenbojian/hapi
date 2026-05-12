@@ -133,6 +133,9 @@ export default {
   'newSession.yolo': 'YOLO mode',
   'newSession.yolo.title': 'Bypass approvals and sandbox',
   'newSession.yolo.desc': 'Uses dangerous agent flags when spawning.',
+  'newSession.tmux': 'Tmux',
+  'newSession.tmux.title': 'Run in tmux session',
+  'newSession.tmux.desc': 'Allows attaching from terminal via tmux attach.',
   'newSession.create': 'Create',
   'newSession.creating': 'Creating…',
 

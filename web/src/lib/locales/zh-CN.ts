@@ -135,6 +135,9 @@ export default {
   'newSession.yolo': 'YOLO 模式',
   'newSession.yolo.title': '跳过审批和沙箱',
   'newSession.yolo.desc': '启动时使用危险的代理标志。',
+  'newSession.tmux': 'Tmux',
+  'newSession.tmux.title': '在 tmux 会话中运行',
+  'newSession.tmux.desc': '可通过 tmux attach 从终端接入。',
   'newSession.create': '创建',
   'newSession.creating': '创建中…',
 

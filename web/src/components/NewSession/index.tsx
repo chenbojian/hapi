@@ -24,10 +24,13 @@ import { ReasoningEffortSelector } from './ReasoningEffortSelector'
 import {
     loadPreferredAgent,
     loadPreferredYoloMode,
+    loadPreferredTmuxMode,
     savePreferredAgent,
     savePreferredYoloMode,
+    savePreferredTmuxMode,
 } from './preferences'
 import { SessionTypeSelector } from './SessionTypeSelector'
+import { TmuxToggle } from './TmuxToggle'
 import { YoloToggle } from './YoloToggle'
 import { formatRunnerSpawnError } from '../../utils/formatRunnerSpawnError'
 
@@ -57,6 +60,7 @@ export function NewSession(props: {
     const [effort, setEffort] = useState<ClaudeEffort>('auto')
     const [modelReasoningEffort, setModelReasoningEffort] = useState<CodexReasoningEffort>('default')
     const [yoloMode, setYoloMode] = useState(loadPreferredYoloMode)
+    const [useTmux, setUseTmux] = useState(loadPreferredTmuxMode)
     const [sessionType, setSessionType] = useState<SessionType>('simple')
     const [worktreeName, setWorktreeName] = useState('')
     const [directoryCreationConfirmed, setDirectoryCreationConfirmed] = useState(false)
@@ -81,6 +85,10 @@ export function NewSession(props: {
     useEffect(() => {
         savePreferredYoloMode(yoloMode)
     }, [yoloMode])
+
+    useEffect(() => {
+        savePreferredTmuxMode(useTmux)
+    }, [useTmux])
 
     useEffect(() => {
         if (props.machines.length === 0) return
@@ -331,7 +339,8 @@ export function NewSession(props: {
                 modelReasoningEffort: resolvedModelReasoningEffort,
                 yolo: yoloMode,
                 sessionType,
-                worktreeName: sessionType === 'worktree' ? (worktreeName.trim() || undefined) : undefined
+                worktreeName: sessionType === 'worktree' ? (worktreeName.trim() || undefined) : undefined,
+                useTmux: useTmux || undefined
             })
 
             if (result.type === 'success') {
@@ -436,6 +445,11 @@ export function NewSession(props: {
                 yoloMode={yoloMode}
                 isDisabled={isFormDisabled}
                 onToggle={setYoloMode}
+            />
+            <TmuxToggle
+                useTmux={useTmux}
+                isDisabled={isFormDisabled}
+                onToggle={setUseTmux}
             />
 
             {(error ?? spawnError) ? (

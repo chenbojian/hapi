@@ -13,6 +13,7 @@ export interface SpawnSessionOptions {
     token?: string
     sessionType?: 'simple' | 'worktree'
     worktreeName?: string
+    useTmux?: boolean
 }
 
 export type SpawnSessionResult =
