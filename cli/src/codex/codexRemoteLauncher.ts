@@ -9,6 +9,7 @@ import { DiffProcessor } from './utils/diffProcessor';
 import { logger } from '@/ui/logger';
 import { CodexDisplay } from '@/ui/ink/CodexDisplay';
 import { buildHapiMcpBridge } from './utils/buildHapiMcpBridge';
+import { shouldEnableHapiFeatures } from '@/claude/utils/claudeSettings';
 import { emitReadyIfIdle } from './utils/emitReadyIfIdle';
 import type { CodexSession } from './session';
 import type { EnhancedMode } from './loop';
@@ -3098,15 +3099,19 @@ class CodexRemoteLauncher extends RemoteLauncherBase {
             failPendingAgentStartsForSpawnArgumentError(spawnAgentError);
         });
 
-        const { server: happyServer, mcpServers } = await buildHapiMcpBridge(session.client, {
-            // In app-server/collab mode, child agents share this MCP bridge.
-            // If the MCP handler writes the title directly, child title calls
-            // leak into the parent HAPI session. Defer the side effect until
-            // parent-thread mcp_tool_call_end reaches this launcher; child
-            // events are filtered above by thread id.
-            emitTitleSummary: false
-        });
-        this.happyServer = happyServer;
+        let mcpServers: Record<string, any> | undefined;
+        if (shouldEnableHapiFeatures()) {
+            const { server: happyServer, mcpServers: mcpBridge } = await buildHapiMcpBridge(session.client, {
+                // In app-server/collab mode, child agents share this MCP bridge.
+                // If the MCP handler writes the title directly, child title calls
+                // leak into the parent HAPI session. Defer the side effect until
+                // parent-thread mcp_tool_call_end reaches this launcher; child
+                // events are filtered above by thread id.
+                emitTitleSummary: false
+            });
+            this.happyServer = happyServer;
+            mcpServers = mcpBridge;
+        }
 
         this.setupAbortHandlers(session.client.rpcHandlerManager, {
             onAbort: () => this.handleAbort(),

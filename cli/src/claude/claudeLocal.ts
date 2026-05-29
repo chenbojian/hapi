@@ -4,6 +4,7 @@ import { claudeCheckSession } from "./utils/claudeCheckSession";
 import { getProjectPath } from "./utils/path";
 import { appendMcpConfigArg } from "./utils/mcpConfig";
 import { systemPrompt } from "./utils/systemPrompt";
+import { shouldEnableHapiFeatures } from "./utils/claudeSettings";
 import { withBunRuntimeEnv } from "@/utils/bunRuntime";
 import { spawnWithTerminalGuard } from "@/utils/spawnWithTerminalGuard";
 import { getHapiBlobsDir } from "@/constants/uploadPaths";
@@ -51,13 +52,17 @@ export async function claudeLocal(opts: {
         args.push('--resume', startFrom);
     }
 
-    args.push('--append-system-prompt', stripNewlinesForWindowsShellArg(systemPrompt));
+    const hapiEnabled = shouldEnableHapiFeatures();
 
-    const cleanupMcpConfig = appendMcpConfigArg(args, opts.mcpServers, {
-        baseDir: projectDir
-    });
+    if (hapiEnabled && systemPrompt) {
+        args.push('--append-system-prompt', stripNewlinesForWindowsShellArg(systemPrompt));
+    }
 
-    if (opts.allowedTools && opts.allowedTools.length > 0) {
+    const cleanupMcpConfig = hapiEnabled
+        ? appendMcpConfigArg(args, opts.mcpServers, { baseDir: projectDir })
+        : null;
+
+    if (hapiEnabled && opts.allowedTools && opts.allowedTools.length > 0) {
         args.push('--allowedTools', opts.allowedTools.join(','));
     }
 

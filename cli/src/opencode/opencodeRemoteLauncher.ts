@@ -1,6 +1,7 @@
 import React from 'react';
 import { logger } from '@/ui/logger';
 import { buildHapiMcpBridge } from '@/codex/utils/buildHapiMcpBridge';
+import { shouldEnableHapiFeatures } from '@/claude/utils/claudeSettings';
 import { convertAgentMessage } from '@/agent/messageConverter';
 import type { AgentMessage, McpServerStdio, PromptContent } from '@/agent/types';
 import { RemoteLauncherBase, type RemoteLauncherDisplayContext, type RemoteLauncherExitReason } from '@/modules/common/remote/RemoteLauncherBase';
@@ -55,10 +56,14 @@ class OpencodeRemoteLauncher extends RemoteLauncherBase {
         const session = this.session;
         const messageBuffer = this.messageBuffer;
 
-        const { server: happyServer, mcpServers } = await buildHapiMcpBridge(session.client, {
-            skillLookup: { workingDirectory: session.path, flavor: 'opencode' }
-        });
-        this.happyServer = happyServer;
+        let mcpServers: Record<string, any> | undefined;
+        if (shouldEnableHapiFeatures()) {
+            const bridge = await buildHapiMcpBridge(session.client, {
+                skillLookup: { workingDirectory: session.path, flavor: 'opencode' }
+            });
+            this.happyServer = bridge.server;
+            mcpServers = bridge.mcpServers;
+        }
 
         const backend = createOpencodeBackend({
             cwd: session.path
@@ -74,7 +79,7 @@ class OpencodeRemoteLauncher extends RemoteLauncherBase {
         await backend.initialize();
 
         const resumeSessionId = session.sessionId;
-        const mcpServerList = toAcpMcpServers(mcpServers);
+        const mcpServerList = mcpServers ? toAcpMcpServers(mcpServers) : [];
         let acpSessionId: string;
         if (resumeSessionId) {
             try {
@@ -273,7 +278,7 @@ class OpencodeRemoteLauncher extends RemoteLauncherBase {
             if (batch.mode.permissionMode === 'plan') {
                 messageText = `${PLAN_MODE_INSTRUCTION}\n\n${messageText}`;
             }
-            if (!this.instructionsSent) {
+            if (!this.instructionsSent && shouldEnableHapiFeatures() && TITLE_INSTRUCTION) {
                 messageText = `${TITLE_INSTRUCTION}\n\n${messageText}`;
                 this.instructionsSent = true;
             }

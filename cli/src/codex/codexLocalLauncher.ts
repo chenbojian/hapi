@@ -7,6 +7,7 @@ import { CodexSession } from './session';
 import { createCodexSessionScanner, type CodexSessionScanner } from './utils/codexSessionScanner';
 import { convertCodexEvent, type CodexMessage } from './utils/codexEventConverter';
 import { buildHapiMcpBridge } from './utils/buildHapiMcpBridge';
+import { shouldEnableHapiFeatures } from '@/claude/utils/claudeSettings';
 import { parseCodexCliOverrides, stripCodexCliOverrides } from './utils/codexCliOverrides';
 import { buildCodexPermissionModeCliArgs } from './utils/permissionModeConfig';
 import { BaseLocalLauncher } from '@/modules/common/launcher/BaseLocalLauncher';
@@ -39,8 +40,12 @@ export async function codexLocalLauncher(session: CodexSession): Promise<'switch
     const effectiveCodexCwd = cwdOverride ? resolve(session.path, cwdOverride) : session.path;
 
     // Start hapi hub for MCP bridge (same as remote mode)
-    const { server: happyServer, mcpServers } = await buildHapiMcpBridge(session.client);
-    logger.debug(`[codex-local]: Started hapi MCP bridge server at ${happyServer.url}`);
+    const hapiMcp = shouldEnableHapiFeatures() ? await buildHapiMcpBridge(session.client) : null;
+    const happyServer = hapiMcp?.server ?? null;
+    const mcpServers = hapiMcp?.mcpServers;
+    if (happyServer) {
+        logger.debug(`[codex-local]: Started hapi MCP bridge server at ${happyServer.url}`);
+    }
 
     const reportTranscriptSyncFailure = (transcriptPath: string, error: unknown): void => {
         const detail = error instanceof Error ? error.message : String(error);
@@ -298,7 +303,7 @@ export async function codexLocalLauncher(session: CodexSession): Promise<'switch
             await activeScanner.cleanup();
         }
         flushAllPendingPlans();
-        happyServer.stop();
+        happyServer?.stop();
         if (!hookReady) {
             logger.debug('[codex-local]: SessionStart hook did not provide transcript path before shutdown');
         }

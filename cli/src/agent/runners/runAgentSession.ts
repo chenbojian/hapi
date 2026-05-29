@@ -7,6 +7,7 @@ import { convertAgentMessage } from '@/agent/messageConverter';
 import { PermissionAdapter } from '@/agent/permissionAdapter';
 import type { AgentBackend, PromptContent } from '@/agent/types';
 import { startHappyServer } from '@/claude/utils/startHappyServer';
+import { shouldEnableHapiFeatures } from '@/claude/utils/claudeSettings';
 import { getHappyCliCommand } from '@/utils/spawnHappyCLI';
 import { registerKillSessionHandler } from '@/claude/registerKillSessionHandler';
 import { bootstrapSession } from '@/agent/sessionFactory';
@@ -71,27 +72,27 @@ export async function runAgentSession(opts: {
 
     const permissionAdapter = new PermissionAdapter(session, backend, () => currentPermissionMode);
 
-    const happyServer = await startHappyServer(session, {
+    const happyServer = shouldEnableHapiFeatures() ? await startHappyServer(session, {
         skillLookup: {
             workingDirectory,
             flavor: opts.agentType
         }
-    });
-    const bridgeCommand = getHappyCliCommand([
-        'mcp',
-        '--url',
-        happyServer.url,
-        '--tools',
-        happyServer.toolNames.join(',')
-    ]);
-    const mcpServers = [
-        {
+    }) : null;
+    const mcpServers = happyServer ? (() => {
+        const bridgeCommand = getHappyCliCommand([
+            'mcp',
+            '--url',
+            happyServer.url,
+            '--tools',
+            happyServer.toolNames.join(',')
+        ]);
+        return [{
             name: 'happy',
             command: bridgeCommand.command,
             args: bridgeCommand.args,
             env: []
-        }
-    ];
+        }];
+    })() : [];
 
     const agentSessionId = await backend.newSession({
         cwd: workingDirectory,
@@ -232,6 +233,6 @@ export async function runAgentSession(opts: {
         await session.flush();
         session.close();
         await backend.disconnect();
-        happyServer.stop();
+        happyServer?.stop();
     }
 }

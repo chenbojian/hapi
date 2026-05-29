@@ -6,6 +6,7 @@ import { buildOpencodeEnv } from './utils/config';
 import { ensureOpencodeConfig } from './utils/opencodeConfig';
 import { TITLE_INSTRUCTION } from './utils/systemPrompt';
 import { buildHapiMcpBridge } from '@/codex/utils/buildHapiMcpBridge';
+import { shouldEnableHapiFeatures } from '@/claude/utils/claudeSettings';
 import type { OpencodeHookEvent } from './types';
 import type { OpencodeHookServer } from './utils/startOpencodeHookServer';
 import { createOpencodeStorageScanner, type OpencodeStorageScannerHandle } from './utils/opencodeStorageScanner';
@@ -265,18 +266,20 @@ export async function opencodeLocalLauncher(
     // Start the hapi MCP server for change_title support (optional feature)
     let happyServer: { url: string; stop: () => void } | null = null;
     let opencodeConfigPath: string | null = null;
-    try {
-        const bridge = await buildHapiMcpBridge(session.client, {
-            skillLookup: { workingDirectory: session.path, flavor: 'opencode' }
-        });
-        happyServer = bridge.server;
-        logger.debug(`[opencode-local]: Started hapi MCP server at ${happyServer.url}`);
+    if (shouldEnableHapiFeatures()) {
+        try {
+            const bridge = await buildHapiMcpBridge(session.client, {
+                skillLookup: { workingDirectory: session.path, flavor: 'opencode' }
+            });
+            happyServer = bridge.server;
+            logger.debug(`[opencode-local]: Started hapi MCP server at ${happyServer.url}`);
 
-        // Generate opencode.json config with MCP server and instructions
-        const { configPath } = ensureOpencodeConfig(opencodeConfigDir, bridge.mcpServers.hapi, TITLE_INSTRUCTION);
-        opencodeConfigPath = configPath;
-    } catch (error) {
-        logger.debug('[opencode-local]: Failed to start hapi MCP server (change_title will be unavailable)', error);
+            // Generate opencode.json config with MCP server and instructions
+            const { configPath } = ensureOpencodeConfig(opencodeConfigDir, bridge.mcpServers.hapi, TITLE_INSTRUCTION);
+            opencodeConfigPath = configPath;
+        } catch (error) {
+            logger.debug('[opencode-local]: Failed to start hapi MCP server (change_title will be unavailable)', error);
+        }
     }
 
     const launcher = new BaseLocalLauncher({

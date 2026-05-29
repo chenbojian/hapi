@@ -2,6 +2,7 @@ import type { EnhancedMode } from '../loop';
 import type { CodexCliOverrides } from './codexCliOverrides';
 import type { McpServersConfig } from './buildHapiMcpBridge';
 import { codexSystemPrompt } from './systemPrompt';
+import { shouldEnableHapiFeatures } from '@/claude/utils/claudeSettings';
 import type {
     ApprovalPolicy,
     SandboxMode,
@@ -113,7 +114,8 @@ function resolveInstructions(args: {
     baseInstructions?: string;
     developerInstructions?: string;
 }): { baseInstructions: string; developerInstructions: string } {
-    const baseInstructions = args.baseInstructions ?? codexSystemPrompt;
+    const defaultPrompt = shouldEnableHapiFeatures() ? codexSystemPrompt : '';
+    const baseInstructions = args.baseInstructions ?? defaultPrompt;
     const developerInstructions = args.developerInstructions
         ? `${baseInstructions}\n\n${args.developerInstructions}`
         : baseInstructions;
@@ -130,7 +132,7 @@ function appendCollaborationInstructions(developerInstructions: string): string 
 export function buildThreadStartParams(args: {
     cwd: string;
     mode: EnhancedMode;
-    mcpServers: McpServersConfig;
+    mcpServers?: McpServersConfig;
     cliOverrides?: CodexCliOverrides;
     baseInstructions?: string;
     developerInstructions?: string;
@@ -142,7 +144,7 @@ export function buildThreadStartParams(args: {
     const resolvedApprovalPolicy = cliOverrides?.approvalPolicy ?? approvalPolicy;
     const resolvedSandbox = cliOverrides?.sandbox ?? sandbox;
 
-    const config = buildMcpServerConfig(args.mcpServers);
+    const config = args.mcpServers ? buildMcpServerConfig(args.mcpServers) : {};
     const {
         baseInstructions,
         developerInstructions: resolvedDeveloperInstructions

@@ -30,7 +30,7 @@ interface LoopOptions {
     startingMode?: 'local' | 'remote'
     startedBy?: 'runner' | 'terminal'
     onModeChange: (mode: 'local' | 'remote') => void
-    mcpServers: Record<string, any>
+    mcpServers?: Record<string, any>
     session: ApiSessionClient
     api: ApiClient,
     claudeEnvVars?: Record<string, string>
@@ -55,7 +55,7 @@ export async function loop(opts: LoopOptions) {
         sessionId: opts.resumeSessionId ?? null,
         claudeEnvVars: opts.claudeEnvVars,
         claudeArgs: opts.claudeArgs,
-        mcpServers: opts.mcpServers,
+        mcpServers: opts.mcpServers ?? {},
         logPath: logPath,
         messageQueue: opts.messageQueue,
         allowedTools: opts.allowedTools,

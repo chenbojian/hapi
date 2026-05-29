@@ -7,6 +7,7 @@ import {
     buildModelReasoningEffortConfigArgs
 } from './utils/codexMcpConfig';
 import { codexSystemPrompt } from './utils/systemPrompt';
+import { shouldEnableHapiFeatures } from '@/claude/utils/claudeSettings';
 import type { ReasoningEffort } from './appServerTypes';
 import { resolveCodexCommand } from './utils/codexExecutable';
 import type { McpServersConfig } from './utils/buildHapiMcpBridge';
@@ -74,7 +75,9 @@ export async function codexLocal(opts: {
     }
 
     // Add developer instructions (system prompt)
-    args.push(...buildDeveloperInstructionsArg(codexSystemPrompt));
+    if (shouldEnableHapiFeatures()) {
+        args.push(...buildDeveloperInstructionsArg(codexSystemPrompt));
+    }
 
     if (opts.codexArgs) {
         const safeArgs = filterResumeSubcommand(opts.codexArgs);

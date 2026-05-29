@@ -9,6 +9,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { logger } from '@/ui/logger';
+import { readSettingsSync } from '@/persistence';
 
 export interface ClaudeSettings {
   includeCoAuthoredBy?: boolean;
@@ -66,4 +67,9 @@ export function shouldIncludeCoAuthoredBy(): boolean {
   }
   
   return settings.includeCoAuthoredBy;
+}
+
+export function shouldEnableHapiFeatures(): boolean {
+  const settings = readSettingsSync();
+  return settings.enableHapiFeatures !== false;
 }
