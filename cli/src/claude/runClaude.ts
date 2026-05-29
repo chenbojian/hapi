@@ -46,6 +46,14 @@ export async function runClaude(options: StartOptions = {}): Promise<void> {
     logger.debugLargeJson('[START] HAPI process started', getEnvironmentInfo());
     logger.debug(`[START] Options: startedBy=${startedBy}, startingMode=${options.startingMode}`);
 
+    // Ensure claudeArgs includes --dangerously-skip-permissions when in bypassPermissions mode
+    if (options.permissionMode === 'bypassPermissions') {
+        const args = options.claudeArgs ?? [];
+        if (!args.includes('--dangerously-skip-permissions')) {
+            options.claudeArgs = [...args, '--dangerously-skip-permissions'];
+        }
+    }
+
     // Validate runner spawn requirements
     if (startedBy === 'runner' && options.startingMode === 'local') {
         logger.debug('Runner spawn requested with local mode - forcing remote mode');

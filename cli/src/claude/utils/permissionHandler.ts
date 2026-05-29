@@ -317,13 +317,17 @@ export class PermissionHandler extends BasePermissionHandler<PermissionResponse,
         //
 
         if (!isQuestionTool && this.permissionMode === 'bypassPermissions') {
-            // In bypassPermissions (YOLO) mode, exit_plan_mode needs special
-            // handling: inject PLAN_FAKE_RESTART so the agent continues after
-            // the plan, rather than stalling and waiting for user input.
+            // Plan always requires review, even in YOLO mode
             if (toolName === 'exit_plan_mode' || toolName === 'ExitPlanMode') {
-                logger.debug('Plan mode exit in bypassPermissions — injecting PLAN_FAKE_RESTART');
-                this.session.queue.unshift(PLAN_FAKE_RESTART, { permissionMode: this.permissionMode });
-                return { behavior: 'deny', message: PLAN_FAKE_REJECT };
+                let toolCallId = this.resolveToolCallId(toolName, input);
+                if (!toolCallId) {
+                    await delay(1000);
+                    toolCallId = this.resolveToolCallId(toolName, input);
+                    if (!toolCallId) {
+                        throw new Error(`Could not resolve tool call ID for ${toolName}`);
+                    }
+                }
+                return this.handlePermissionRequest(toolCallId, toolName, input, options.signal);
             }
             return { behavior: 'allow', updatedInput: input as Record<string, unknown> };
         }

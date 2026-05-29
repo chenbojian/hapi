@@ -13,7 +13,7 @@ describe('NewSession preferences', () => {
 
     it('loads defaults when storage is empty', () => {
         expect(loadPreferredAgent()).toBe('claude')
-        expect(loadPreferredYoloMode()).toBe(false)
+        expect(loadPreferredYoloMode()).toBe(true)
     })
 
     it('loads saved values from storage', () => {

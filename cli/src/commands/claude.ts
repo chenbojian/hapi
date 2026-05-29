@@ -75,6 +75,11 @@ export const claudeCommand: CommandDefinition = {
             }
         }
 
+        if (!hasExplicitPermissionMode && !options.permissionMode) {
+            options.permissionMode = 'bypassPermissions'
+            unknownArgs.push('--dangerously-skip-permissions')
+        }
+
         if (unknownArgs.length > 0) {
             options.claudeArgs = [...(options.claudeArgs || []), ...unknownArgs]
         }

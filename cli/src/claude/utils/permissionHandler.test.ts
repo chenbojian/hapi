@@ -29,8 +29,8 @@ function createFakeSession() {
 }
 
 describe('PermissionHandler — YOLO plan mode', () => {
-    it('injects PLAN_FAKE_RESTART and denies exit_plan_mode in bypassPermissions', async () => {
-        const { session, queueItems } = createFakeSession();
+    it('sends exit_plan_mode through permission request flow in bypassPermissions', async () => {
+        const { session } = createFakeSession();
         const handler = new PermissionHandler(session);
         handler.handleModeChange('bypassPermissions');
 
@@ -43,25 +43,26 @@ describe('PermissionHandler — YOLO plan mode', () => {
             },
         } as any);
 
-        const result = await handler.handleToolCall(
+        // handleToolCall should block (waiting for user review), not auto-approve
+        const resultPromise = handler.handleToolCall(
             'exit_plan_mode',
             {},
             { permissionMode: 'bypassPermissions' } as any,
             { signal: new AbortController().signal }
         );
 
-        // Should deny with PLAN_FAKE_REJECT (so Claude restarts)
-        expect(result.behavior).toBe('deny');
-        expect(result).toEqual({ behavior: 'deny', message: PLAN_FAKE_REJECT });
+        // The call should not have resolved yet (it's waiting for permission)
+        let resolved = false;
+        resultPromise.then(() => { resolved = true; });
+        await new Promise(r => setTimeout(r, 50));
+        expect(resolved).toBe(false);
 
-        // Should inject PLAN_FAKE_RESTART into the queue
-        expect(queueItems).toHaveLength(1);
-        expect(queueItems[0].message).toBe(PLAN_FAKE_RESTART);
-        expect(queueItems[0].mode).toEqual({ permissionMode: 'bypassPermissions' });
+        // Verify updateAgentState was called to register the pending request
+        expect(session.client.updateAgentState).toHaveBeenCalled();
     });
 
-    it('injects PLAN_FAKE_RESTART for ExitPlanMode variant', async () => {
-        const { session, queueItems } = createFakeSession();
+    it('sends ExitPlanMode through permission request flow in bypassPermissions', async () => {
+        const { session } = createFakeSession();
         const handler = new PermissionHandler(session);
         handler.handleModeChange('bypassPermissions');
 
@@ -73,17 +74,19 @@ describe('PermissionHandler — YOLO plan mode', () => {
             },
         } as any);
 
-        const result = await handler.handleToolCall(
+        const resultPromise = handler.handleToolCall(
             'ExitPlanMode',
             {},
             { permissionMode: 'bypassPermissions' } as any,
             { signal: new AbortController().signal }
         );
 
-        expect(result.behavior).toBe('deny');
-        expect(result).toEqual({ behavior: 'deny', message: PLAN_FAKE_REJECT });
-        expect(queueItems).toHaveLength(1);
-        expect(queueItems[0].message).toBe(PLAN_FAKE_RESTART);
+        let resolved = false;
+        resultPromise.then(() => { resolved = true; });
+        await new Promise(r => setTimeout(r, 50));
+        expect(resolved).toBe(false);
+
+        expect(session.client.updateAgentState).toHaveBeenCalled();
     });
 
     it('allows normal tools in bypassPermissions without queue injection', async () => {

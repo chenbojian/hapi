@@ -63,6 +63,9 @@ export function resolveToolAutoApprovalDecision(
     }
 
     if (mode === 'yolo') {
+        if (lowerTool === 'exit_plan_mode' || lowerTool === 'exitplanmode') {
+            return null;
+        }
         return 'approved_for_session';
     }
 

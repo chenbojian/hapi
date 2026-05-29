@@ -28,7 +28,7 @@ import { resolveWorkspaceRoots } from '@/utils/workspaceRoot';
 import { hashRunnerCliApiToken, hashRunnerExtraHeaders } from './runnerIdentity';
 import { scheduleCursorModelsPrewarm } from '@/modules/common/cursorModelsPrewarm';
 
-export async function startRunner(options: { workspaceRoots?: string[] } = {}): Promise<void> {
+export async function startRunner(options: { workspaceRoots?: string[]; replace?: boolean } = {}): Promise<void> {
   // We don't have cleanup function at the time of server construction
   // Control flow is:
   // 1. Create promise that will resolve when shutdown is requested
@@ -290,7 +290,7 @@ export async function startRunner(options: { workspaceRoots?: string[] } = {}): 
       if (agent === 'gemini') {
         throw new Error('Gemini CLI is no longer supported and cannot be launched (Google sunset the consumer Gemini CLI on 2026-06-18). Existing Gemini sessions remain viewable in the web UI.');
       }
-      const yolo = options.yolo === true;
+      const yolo = options.yolo !== false;
       const sessionType = options.sessionType ?? 'simple';
       const worktreeName = options.worktreeName;
       let directoryCreated = false;

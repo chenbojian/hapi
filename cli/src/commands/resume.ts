@@ -69,7 +69,7 @@ async function dispatchLocalResume(target: LocalResumeTarget): Promise<void> {
         workingDirectory: target.directory,
         resumeSessionId: target.agentSessionId,
         startedBy: 'terminal' as const,
-        permissionMode: target.permissionMode
+        permissionMode: target.permissionMode ?? 'bypassPermissions'
     }
 
     if (target.flavor === 'claude') {

@@ -164,8 +164,9 @@ export const runnerCommand: CommandDefinition = {
         }
 
         if (runnerSubcommand === 'start-sync') {
+            const replace = mutableArgs.includes('--replace')
             await initializeToken()
-            await startRunner({ workspaceRoots })
+            await startRunner({ workspaceRoots, replace })
             process.exit(0)
         }
 
