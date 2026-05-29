@@ -241,6 +241,10 @@ export async function startHappyServer(client: ApiSessionClient, options: StartH
     };
 
     const server = createServer(async (req, res) => {
+        if (req.url?.startsWith('/.well-known/')) {
+            res.writeHead(404).end();
+            return;
+        }
         try {
             const sessionId = readMcpSessionId(req);
             const transport = sessionId
