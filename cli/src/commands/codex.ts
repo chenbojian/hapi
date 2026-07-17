@@ -84,6 +84,11 @@ export const codexCommand: CommandDefinition = {
                     unknownArgs.push(arg)
                 }
             }
+            if (!hasExplicitPermissionMode && !options.permissionMode) {
+                options.permissionMode = 'yolo'
+                unknownArgs.push('--dangerously-bypass-approvals-and-sandbox')
+            }
+
             if (unknownArgs.length > 0) {
                 options.codexArgs = unknownArgs
             }
